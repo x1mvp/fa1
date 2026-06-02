@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: crewai-app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./agents:/app/agents
+      - ./tools:/app/tools
+      - ./models:/app/models
+      - ./memory:/app/memory
+      - ./workflows:/app/workflows
+      - ./src:/app/src
+      - ./outputs:/app/output
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - REDIS_URL=redis://redis:6379
+      - PYTHONPATH=/app
+    depends_on:
+      - ollama
+      - chromadb
+      - redis
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  chroma_data:
+  redis_data:
